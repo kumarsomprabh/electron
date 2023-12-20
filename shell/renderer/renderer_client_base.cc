@@ -276,6 +276,13 @@ void RendererClientBase::RenderThreadStarted() {
     blink::SchemeRegistry::RegisterURLSchemeAsBypassingContentSecurityPolicy(
         WTF::String::FromUTF8(scheme.data(), scheme.length()));
 
+  std::vector<std::string> code_cache_schemes_list =
+      ParseSchemesCLISwitch(command_line, switches::kCodeCacheSchemes);
+  for (const auto& scheme : code_cache_schemes_list) {
+    blink::WebSecurityPolicy::RegisterURLSchemeAsCodeCacheWithHashing(
+        blink::WebString::FromASCII(scheme));
+  }
+
   // Allow file scheme to handle service worker by default.
   // FIXME(zcbenz): Can this be moved elsewhere?
   if (electron::fuses::IsGrantFileProtocolExtraPrivilegesEnabled()) {
@@ -331,7 +338,7 @@ void RendererClientBase::RenderFrameCreated(
       ->AddInterface<extensions::mojom::MimeHandlerViewContainerManager>(
           base::BindRepeating(
               &extensions::MimeHandlerViewContainerManager::BindReceiver,
-              render_frame->GetRoutingID()));
+              base::Unretained(render_frame)));
 #endif
 
 #if BUILDFLAG(ENABLE_BUILTIN_SPELLCHECKER)
@@ -625,7 +632,7 @@ void RendererClientBase::SetupMainWorldOverrides(
       isolated_api.GetHandle()};
 
   util::CompileAndCall(context, "electron/js2c/isolated_bundle",
-                       &isolated_bundle_params, &isolated_bundle_args, nullptr);
+                       &isolated_bundle_params, &isolated_bundle_args);
 }
 
 // static
